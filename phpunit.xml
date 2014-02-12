@@ -1,0 +1,5 @@
+<phpunit colors="true" bootstrap="tests/bootstrap.php">
+    <listeners>
+        <listener class="\Mockery\Adapter\Phpunit\TestListener"></listener>
+    </listeners>
+</phpunit>
