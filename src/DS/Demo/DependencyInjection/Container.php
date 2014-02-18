@@ -2,20 +2,24 @@
 
 namespace DS\Demo\DependencyInjection;
 
+use Doctrine\Common\Annotations\AnnotationRegistry;
 use DS\Demo\Task\CatifyTask;
 use DS\Demo\Task\LogContentTask;
+use DS\Demo\Task\ReadBitlyTask;
 use DS\Demo\Task\ReverseStringTask;
 use DS\Demo\Command\StartCommand;
 use DS\Queue\Backend\InMemoryQueue;
-use DS\Queue\Consumer\LazyConsumer;
+use DS\Queue\Backend\RedisQueue;
 use DS\Worker\Plugin\BackOffPlugin;
 use DS\Worker\Plugin\GracefulShutdownPlugin;
 use DS\Worker\Plugin\LoggingPlugin;
 use DS\Worker\Plugin\SequentialJobPlugin;
 use DS\Worker\Worker;
+use JMS\Serializer\SerializerBuilder;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Redis;
 
 /**
  * A simple DI container for our test app.
@@ -30,6 +34,9 @@ class Container extends \Pimple
 {
     public function __construct()
     {
+        // Necessary to wireup JMS Serializer's annotation reader
+        AnnotationRegistry::registerLoader('class_exists');
+
         $this['ds.worker.event_dispatcher'] = $this->share(
             function ($app) {
                 $dispatcher = new EventDispatcher();
@@ -37,23 +44,10 @@ class Container extends \Pimple
                 // All the plugins for our Worker
                 $dispatcher->addSubscriber(new BackOffPlugin(1));
                 $dispatcher->addSubscriber(new LoggingPlugin($app['ds.logger']));
-                $dispatcher->addSubscriber(new SequentialJobPlugin());
+                //$dispatcher->addSubscriber(new SequentialJobPlugin());
                 $dispatcher->addSubscriber(new GracefulShutdownPlugin($app['ds.logger']));
 
                 return $dispatcher;
-            }
-        );
-
-        $this['ds.worker.consumer'] = $this->share(
-            function ($app) {
-                $consumer = new LazyConsumer($app);
-                // Register our tasks: first param is taskId, second is DI id
-                // See the bottom of the file for the definitions
-                $consumer->registerTask('catify', 'ds.task.catify');
-                $consumer->registerTask('log_content', 'ds.task.log_content');
-                $consumer->registerTask('reverse_string', 'ds.task.reverse_string');
-
-                return $consumer;
             }
         );
 
@@ -67,9 +61,41 @@ class Container extends \Pimple
             }
         );
 
-        $this['ds.worker.queue'] = $this->share(
+        $this['ds.queue.locator'] = $this->share(
             function () {
                 return new InMemoryQueue();
+            }
+        );
+
+        $this['ds.queue.in_memory'] = $this->share(
+            function () {
+                return new InMemoryQueue();
+            }
+        );
+
+        $this['ds.redis'] = $this->share(
+            function () {
+                $redis = new Redis();
+                $redis->pconnect('localhost');
+                return $redis;
+            }
+        );
+
+        $this['ds.queue.bitly_incoming'] = $this->share(
+            function ($app) {
+                return new RedisQueue($app['ds.redis'], 'bitly');
+            }
+        );
+
+        $this['ds.queue.redis_output'] = $this->share(
+            function ($app) {
+                return new RedisQueue($app['ds.redis'], 'output');
+            }
+        );
+
+        $this['ds.queue.http_stream'] = $this->share(
+            function () {
+                // TODO
             }
         );
 
@@ -84,9 +110,14 @@ class Container extends \Pimple
                 return new StartCommand(
                     null,
                     $app['ds.worker.worker'],
-                    $app['ds.worker.queue'],
-                    $app['ds.worker.consumer']
+                    $app
                 );
+            }
+        );
+
+        $this['ds.serializer'] = $this->share(
+            function () {
+                return SerializerBuilder::create()->build();
             }
         );
 
@@ -98,8 +129,14 @@ class Container extends \Pimple
         );
 
         $this['ds.task.catify'] = $this->share(
-            function () {
-                return new CatifyTask();
+            function ($app) {
+                return new CatifyTask($app['ds.logger']);
+            }
+        );
+
+        $this['ds.task.read_bitly'] = $this->share(
+            function ($app) {
+                return new ReadBitlyTask($app['ds.queue.redis_output'], $app['ds.serializer']);
             }
         );
 

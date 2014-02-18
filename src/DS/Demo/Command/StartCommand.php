@@ -4,9 +4,10 @@ namespace DS\Demo\Command;
 
 use Cilex\Command\Command;
 use DS\Demo\Job\FormatContentJob;
-use DS\Queue\Consumer\Consumer;
 use DS\Queue\Queue;
+use DS\Queue\Task\Task;
 use DS\Worker\Worker;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -23,35 +24,30 @@ class StartCommand extends Command
     protected $worker;
 
     /**
-     * @var Queue
+     * @var \Pimple
      */
-    protected $queue;
-
-    /**
-     * @var Consumer
-     */
-    protected $consumer;
+    protected $container;
 
     /**
      * @param null|string $name
      * @param Worker $worker
-     * @param Queue $queue
-     * @param Consumer $consumer
+     * @param Pimple $container
      */
-    public function __construct($name, Worker $worker, Queue $queue, Consumer $consumer)
+    public function __construct($name, Worker $worker, \Pimple $container)
     {
         parent::__construct($name);
 
         $this->worker = $worker;
-        $this->queue = $queue;
-        $this->consumer = $consumer;
+        $this->container = $container;
     }
 
     protected function configure()
     {
         $this
             ->setName('worker:run')
-            ->setDescription('Start running our worker!');
+            ->setDescription('Start running our worker!')
+            ->addArgument('queue', InputArgument::REQUIRED, 'ID of queue to run (redis or http)')
+            ->addArgument('task', InputArgument::REQUIRED, 'ID of task to run (bitly, twitter, catify)');
     }
 
     /**
@@ -61,11 +57,32 @@ class StartCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        // Let's add a fake job to our queue
-        $job = new FormatContentJob('lorem ipsum', ['reverse_string', 'catify', 'log_content']);
-        $this->queue->queue($job);
+        $queue = $this->getQueue($input->getArgument('queue'));
+        $task = $this->getTask($input->getArgument('task'));
 
         // Start it up!
-        $this->worker->work($this->queue, $this->consumer);
+        $this->worker->work($queue, $task);
+    }
+
+    /**
+     * This is really really ugly and I would normally refactor this to a queue service locator or some such.
+     *
+     * Just for demo. Promise.
+     *
+     * @param string $queueId
+     * @return Queue
+     */
+    protected function getQueue($queueId)
+    {
+        return $this->container['ds.queue.'.$queueId];
+    }
+
+    /**
+     * @param string $taskId
+     * @return Task
+     */
+    protected function getTask($taskId)
+    {
+        return $this->container['ds.task.'.$taskId];
     }
 }

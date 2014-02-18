@@ -16,33 +16,16 @@ class JobCompletedEvent extends Event
     const NAME = 'worker.job_completed';
 
     /**
-     * @var Job
-     */
-    protected $job;
-
-    /**
      * @var Queue
      */
     protected $queue;
 
     /**
-     * @param Job $job The completed job
      * @param Queue $queue The queue the job came from
      */
-    public function __construct(Job $job, Queue $queue)
+    public function __construct(Queue $queue)
     {
-        $this->job = $job;
         $this->queue = $queue;
-    }
-
-    /**
-     * Returns the job that was just completed in the worker
-     *
-     * @return Job
-     */
-    public function getJob()
-    {
-        return $this->job;
     }
 
     /**

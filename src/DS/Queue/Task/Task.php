@@ -20,5 +20,5 @@ interface Task
      * @param Job $job
      * @return void
      */
-    public function execute(Job $job);
+    public function execute(Job $payload);
 }

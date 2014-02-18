@@ -13,7 +13,8 @@
         "symfony/event-dispatcher": "v2.4.1",
         "cilex/cilex": "v1.0.1",
         "pimple/pimple": "~1.0",
-        "monolog/monolog": "~1.7"
+        "monolog/monolog": "~1.7",
+        "jms/serializer": "*"
     },
     "require-dev": {
         "phpunit/phpunit": "~3.7",

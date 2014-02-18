@@ -39,7 +39,7 @@ class WorkerTest extends \PHPUnit_Framework_TestCase
     /**
      * @var Consumer
      */
-    protected $consumer;
+    protected $task;
 
     /**
      * @var int
@@ -76,15 +76,15 @@ class WorkerTest extends \PHPUnit_Framework_TestCase
         $this->queue = new InMemoryQueue();
 
         // Setup a consumer that knows "foo" and "bar" tasks but does nothing else
-        $this->consumer = Mockery::mock('DS\Queue\Consumer\Consumer');
-        $this->consumer->shouldReceive('getAvailableTaskIds')->andReturn(['foo', 'bar']);
-        $this->consumer->shouldReceive('execute');
+        $this->task = Mockery::mock('DS\Queue\Task\Task');
+        $this->task->shouldReceive('getAvailableTaskIds')->andReturn(['foo', 'bar']);
+        $this->task->shouldReceive('execute');
 
     }
 
     public function testEmptyQueueThrowsProperEvents()
     {
-        $this->worker->work($this->queue, $this->consumer);
+        $this->worker->work($this->queue, $this->task);
 
         $events = $this->eventDispatcher->dequeueEvents();
         $this->assertEventOrder(['Reset', 'NoPendingJob', 'PassCompleted', 'Shutdown'], $events);
@@ -95,11 +95,10 @@ class WorkerTest extends \PHPUnit_Framework_TestCase
         $job1 = new MockJob('foo');
         $this->queue->queue($job1);
 
-        $this->worker->work($this->queue, $this->consumer);
+        $this->worker->work($this->queue, $this->task);
 
         $events = $this->eventDispatcher->dequeueEvents();
         $this->assertEventOrder(['Reset', 'JobCompleted', 'PassCompleted', 'Shutdown'], $events);
-        $this->assertSame($job1, $events[1]->getJob());
     }
 
     public function testWorkerContinuesWithoutJobs()
@@ -109,7 +108,7 @@ class WorkerTest extends \PHPUnit_Framework_TestCase
         $this->queue->queue(new MockJob('foo'));
         $this->queue->queue(new MockJob('bar'));
 
-        $this->worker->work($this->queue, $this->consumer);
+        $this->worker->work($this->queue, $this->task);
 
         $events = $this->eventDispatcher->dequeueEvents();
         $this->assertEventOrder(

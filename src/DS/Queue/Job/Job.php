@@ -16,5 +16,5 @@ namespace DS\Queue\Job;
  */
 interface Job
 {
-    public function getTaskId();
+    public function getPayload();
 }

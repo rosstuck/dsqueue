@@ -61,7 +61,7 @@ class LoggingPlugin implements EventSubscriberInterface
 
     public function onJobCompleted(JobCompletedEvent $event)
     {
-        $this->logger->debug('Finished job. Task was: '.$event->getJob()->getTaskId());
+        $this->logger->debug('Finished job.');
     }
 
     public function onPassCompleted()

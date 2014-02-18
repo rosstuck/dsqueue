@@ -2,8 +2,8 @@
 
 namespace DS\Queue;
 
-use DS\Queue\Consumer\Consumer;
 use DS\Queue\Job\Job;
+use DS\Queue\Task\Task;
 
 /**
  * Stores Jobs in a...well, queue and then processes them using a Consumer
@@ -33,6 +33,11 @@ interface Queue {
     const RESULT_NO_JOB = 'no_job';
 
     /**
+     * Status code returned when a job is completed in the queu
+     */
+    const RESULT_JOB_COMPLETE = 'job_complete';
+
+    /**
      * Add a job to the queue
      *
      * @param Job $job
@@ -46,8 +51,8 @@ interface Queue {
      * processed, everything else will remain in the queue. On completion, the
      * processed job or an appropriate result code will be returned.
      *
-     * @param Consumer $consumer
+     * @param Task $task
      * @return Job|string
      */
-    public function processNextJob(Consumer $consumer);
+    public function processNextJob(Task $task);
 }

@@ -5,10 +5,28 @@ $script = <<SCRIPT
 apt-get update
 apt-get install -y php5-cli
 apt-get install -y python-setuptools
+apt-get install -y redis-server
 easy_install supervisor
 cp /vagrant/system/supervisor /etc/init.d/
 chmod a+x /etc/init.d/supervisor
 cp /vagrant/system/supervisord.conf /etc/supervisord.conf
+
+# libzmq setup
+apt-get install -y libtool autoconf automake uuid-dev build-essential pkg-config
+cd ~
+wget http://download.zeromq.org/zeromq-3.2.4.tar.gz
+tar zxvf zeromq-3.2.4.tar.gz && cd zeromq-3.2.4
+./configure
+make && make install
+
+# Install redis and zmq PHP extensions
+apt-get install -y php5-dev php-pear
+pecl install zmq-beta
+pecl install redis
+
+# Activate PHP extensions
+cp /vagrant/system/10-redis.ini /etc/php5/conf.d/
+cp /vagrant/system/10-zmq.ini /etc/php5/conf.d/
 SCRIPT
 
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!

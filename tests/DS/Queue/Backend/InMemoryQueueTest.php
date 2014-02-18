@@ -3,8 +3,8 @@
 namespace DS\Queue\Backend;
 
 use DS\Mock\MockJob;
-use DS\Queue\Consumer\Consumer;
 use DS\Queue\Queue;
+use DS\Queue\Task\Task;
 use Mockery\Mock;
 
 /**
@@ -20,16 +20,15 @@ class InMemoryQueueTest extends \PHPUnit_Framework_TestCase
     protected $queue;
 
     /**
-     * @var Mock|Consumer
+     * @var Mock|Task
      */
-    protected $consumerMock;
+    protected $taskMock;
 
     protected function setUp()
     {
         $this->queue = new InMemoryQueue();
 
-        $this->consumerMock = \Mockery::mock('DS\Queue\Consumer\Consumer');
-        $this->consumerMock->shouldReceive('getAvailableTaskIds')->andReturn(['foo', 'bar']);
+        $this->taskMock = \Mockery::mock('DS\Queue\Task\Task');
     }
 
     public function testCallsConsumerOnJobsInCorrectOrder()
@@ -40,27 +39,21 @@ class InMemoryQueueTest extends \PHPUnit_Framework_TestCase
         $this->queue->queue($job1);
         $this->queue->queue($job2);
 
-        $this->consumerMock->shouldReceive('execute')->once()->with($job1);
-        $this->consumerMock->shouldReceive('execute')->once()->with($job2);
-        $result1 = $this->queue->processNextJob($this->consumerMock);
-        $result2 = $this->queue->processNextJob($this->consumerMock);
+        $this->taskMock->shouldReceive('execute')->once()->with($job1);
+        $this->taskMock->shouldReceive('execute')->once()->with($job2);
+        $result1 = $this->queue->processNextJob($this->taskMock);
+        $result2 = $this->queue->processNextJob($this->taskMock);
 
-        $this->assertSame($job1, $result1);
-        $this->assertSame($job2, $result2);
+        $this->assertSame(Queue::RESULT_JOB_COMPLETE, $result1);
+        $this->assertSame(Queue::RESULT_JOB_COMPLETE, $result2);
     }
 
     public function testEmptyQueueReturnsNoPendingJobs()
     {
-        $this->consumerMock->shouldReceive('execute')->never();
-        $result = $this->queue->processNextJob($this->consumerMock);
+        $this->taskMock->shouldReceive('execute')->never();
+        $result = $this->queue->processNextJob($this->taskMock);
 
         $this->assertEquals(Queue::RESULT_NO_JOB, $result);
-    }
-
-    public function testConsumerOnlyReceivesJobsItHasTasksFor()
-    {
-        $this->queue->queue(new MockJob('some_unknown_task'));
-        $this->assertEquals(Queue::RESULT_NO_JOB, $this->queue->processNextJob($this->consumerMock));
     }
 
     // This might seem over the top but I'm looking for leftover state issues
@@ -69,20 +62,20 @@ class InMemoryQueueTest extends \PHPUnit_Framework_TestCase
     {
         $job1 = new MockJob('foo');
         $job2 = new MockJob('foo');
-        $this->consumerMock->shouldReceive('execute');
+        $this->taskMock->shouldReceive('execute');
 
         // Empty the queue
         $this->queue->queue($job1);
-        $result1 = $this->queue->processNextJob($this->consumerMock);
-        $result2 = $this->queue->processNextJob($this->consumerMock);
+        $result1 = $this->queue->processNextJob($this->taskMock);
+        $result2 = $this->queue->processNextJob($this->taskMock);
         // Add one and do it again
         $this->queue->queue($job2);
-        $result3 = $this->queue->processNextJob($this->consumerMock);
-        $result4 = $this->queue->processNextJob($this->consumerMock);
+        $result3 = $this->queue->processNextJob($this->taskMock);
+        $result4 = $this->queue->processNextJob($this->taskMock);
 
-        $this->assertSame($job1, $result1);
+        $this->assertSame(Queue::RESULT_JOB_COMPLETE, $result1);
         $this->assertSame(Queue::RESULT_NO_JOB, $result2);
-        $this->assertSame($job2, $result3);
+        $this->assertSame(Queue::RESULT_JOB_COMPLETE, $result3);
         $this->assertSame(Queue::RESULT_NO_JOB, $result4);
     }
 }

@@ -1,30 +1,25 @@
 <?php
 
-namespace DS\Mock;
-
-use DS\Queue\Job\Job;
+namespace DS\Queue\Job;
 
 /**
  *  
  * @author Ross Tuck <me@rosstuck.com>
  */
-class MockJob implements Job
+class StandardJob implements Job
 {
-    /**
-     * @var string
-     */
     protected $payload;
 
-    /**
-     * @param string $taskId
-     */
     public function __construct($payload)
     {
         $this->payload = $payload;
     }
 
+    /**
+     * @return mixed
+     */
     public function getPayload()
     {
         return $this->payload;
     }
-}
+} 

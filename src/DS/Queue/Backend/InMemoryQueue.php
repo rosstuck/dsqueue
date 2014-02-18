@@ -4,7 +4,9 @@ namespace DS\Queue\Backend;
 
 use DS\Queue\Consumer\Consumer;
 use DS\Queue\Job\Job;
+use DS\Queue\Job\StandardJob;
 use DS\Queue\Queue;
+use DS\Queue\Task\Task;
 
 /**
  * A simple array backed queue. Mostly useful for testing.
@@ -29,30 +31,14 @@ class InMemoryQueue implements Queue
     /**
      * {@inheritdoc}
      */
-    public function processNextJob(Consumer $consumer)
+    public function processNextJob(Task $task)
     {
-        $job = $this->getNextJob($consumer->getAvailableTaskIds());
-        if (!$job) {
+        $jobPayload = array_pop($this->pendingJobs);
+        if (!$jobPayload) {
             return Queue::RESULT_NO_JOB;
         }
 
-        $consumer->execute($job);
-        return $job;
-    }
-
-    /**
-     * Fetch a job from the queue if it has one of the given task ids
-     *
-     * @param array $taskIds
-     * @return Job|null
-     */
-    protected function getNextJob($taskIds)
-    {
-        foreach ($this->pendingJobs as $key => $job) {
-            if (in_array($job->getTaskId(), $taskIds)) {
-                unset($this->pendingJobs[$key]);
-                return $job;
-            }
-        }
+        $task->execute($jobPayload);
+        return Queue::RESULT_JOB_COMPLETE;
     }
 }
